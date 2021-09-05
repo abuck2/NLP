@@ -52,7 +52,7 @@ class Sentiment:
 
             wc = WordCloud()
             img = wc.generate_from_text(' '.join(words_tokens))
-            img.to_file("{}/images/{}_worcloud.jpeg".format(self.current_dir, k)) # example of something you can do with the img
+            img.to_file("{}/images/{}_worcloud.jpeg".format(self.current_dir, k)) 
             
             #pos tagging for further lemmatization
             if self.lemmatization:
