@@ -1,8 +1,9 @@
 #Models, embedding and evaluation
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
+from gensim.utils import simple_preprocess, tokenize
+from gensim.models import doc2vec
 from sklearn.cluster import MiniBatchKMeans, DBSCAN, AgglomerativeClustering
 from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
+
 
 #Wordcloud
 from wordcloud import WordCloud
@@ -16,12 +17,11 @@ import os
 
 class ReviewsClustering:
     def __init__(self, model_type = "kmeans"):
-        self.vectorizer = TfidfVectorizer(stop_words={'english'})
+        print("loading models") 
         self.current_dir =  os.path.dirname(os.path.abspath(__file__))        
-        self.dim_red = TruncatedSVD(500)
         self.model_type = model_type
         if model_type == "DBSCAN":
-            self.model = DBSCAN(eps=0.7)
+            self.model = DBSCAN(eps=0.9)
         elif model_type == "kmeans":
             self.model = MiniBatchKMeans(n_clusters=5, random_state=0, batch_size=100, max_iter=20)
         elif model_type == "hierarchical":
@@ -29,22 +29,39 @@ class ReviewsClustering:
         else : 
             raise ValueError("model not supported")
 
-    def run(self):
+        self.embedder = doc2vec.Doc2Vec(vector_size=500, min_count=2, epochs=100)
+
+    def run(self, train:bool = True, vectorize = True):
         data = pd.read_csv(self.current_dir+"/data/tripadvisor_hotel_reviews.csv")
-        reviews_list = list(data.Review)
-        data = self.dataprep(reviews_list)
+        data = self.dataprep(data, train, vectorize)
         clusters = self.cluster_data(data)
         self.evaluation_perf(clusters)
 
-    def dataprep(self, reviews_list):
-        X = self.vectorizer.fit_transform(reviews_list)
-        print("initial shape : {}".format(X.shape))
-        Xpca = self.dim_red.fit_transform(X)
-        print("After PCA : {}".format(Xpca.shape))
-        explained = self.dim_red.explained_variance_ratio_.sum()
-        exp = round(explained*100, 2)
-        print("Percentage of explained variance after SVD : {}%".format(exp))
-        data = pd.DataFrame(Xpca, index = reviews_list)
+    def dataprep(self, data, train, vectorize):
+        print("Tagging")
+        list_docs = [doc2vec.TaggedDocument(words=simple_preprocess(row["Review"]), tags=[index]) for index, row in data.iterrows()]
+        if train : 
+            print("Building embedder")
+            self.embedder.build_vocab(list_docs)
+            self.embedder.train(list_docs, total_examples=self.embedder.corpus_count, epochs=100) 
+            self.embedder.save(self.current_dir+"/d2v.mod")
+        else : 
+            self.embedder = doc2vec.Doc2Vec.load(self.current_dir+"/d2v.mod")
+        
+        if vectorize:
+            print("Creating vectors")
+            vectors = []
+            index_list = [] 
+            for index, review in enumerate(data.Review):
+                words = simple_preprocess(review) #tokenize, lowercase, deaccent
+                vector = self.embedder.infer_vector(words)
+                vectors.append(vector)
+            data = pd.DataFrame(vectors, index = data.Review)
+            print(data.shape)
+            data.to_csv(self.current_dir+"/data/embeddings.csv")
+        else : 
+            data = pd.read_csv(self.current_dir+"/data/embeddings.csv")
+            print(data.shape)
         return data
 
     def cluster_data(self, data):
@@ -79,4 +96,4 @@ class ReviewsClustering:
 
 if __name__=="__main__":
     rc = ReviewsClustering(model_type = "hierarchical")
-    rc.run()
+    rc.run(train = True, vectorize = True)
