@@ -18,7 +18,11 @@ class ReviewClustering:
 
         #Import BErt
         BERT_URL = 'https://tfhub.dev/google/bert_multi_cased_L-12_H-768_A-12/1'
+        PREPROCESS_MODEL = "https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3"
+
+        self.preprocess = hub.load(PREPROCESS_MODEL)
         self.bert_module = hub.load(BERT_URL)
+        
         #create tokenizer here
         self.tokenizer = Tokenizer()
 
@@ -28,7 +32,9 @@ class ReviewClustering:
         text = list(data.Review)
 
         self.max_seq_len = max([len(elem) for elem in data.Review])
-        self.dataprep(text)
+        #self.dataprep(text)
+        inputs = self.preprocess(text)
+        outputs = bert(inputs)
 
 
     def dataprep(self, text):
