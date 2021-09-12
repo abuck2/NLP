@@ -15,7 +15,8 @@ class ReviewGeneratorGPT:
 
     def run(self):
         one_sentence = "nice hotel expensive parking got good deal stay hotel anniversary, arrived late evening took advice previous reviews did valet parking, check quick easy, little disappointed non-existent view room room clean nice size, bed comfortable woke stiff neck high pillows, not soundproof like heard music room night morning loud bangs doors opening closing hear people talking hallway, maybe just noisy neighbors, aveda bath products nice, did not goldfish stay nice touch taken advantage staying longer, location great walking distance shopping, overall nice experience having pay 40 parking night"
-        input_ids = tokenizer.encode(one_sentence, return_tensors = "pt")
+        """
+        #input_ids = tokenizer.encode(one_sentence, return_tensors = "pt")
         output = model.generate(input_ids,
             max_length = 10000,
             num_beams = 5,
@@ -24,6 +25,10 @@ class ReviewGeneratorGPT:
 
 
         result = tokenizer.decode(output[0], skip_special_tokens = True)
+        """
+        result = generator(one_sentence, max_length=100, do_sample=True, temperature=0.9)
+        print(result)
+
 
 if __name__=="__main__":
     rg = ReviewGeneratorGPT()
